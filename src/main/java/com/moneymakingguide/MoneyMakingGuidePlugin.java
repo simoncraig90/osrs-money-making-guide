@@ -5,6 +5,7 @@ import com.moneymakingguide.data.MmgDataset;
 import com.moneymakingguide.data.MmgItem;
 import com.moneymakingguide.data.MmgMethod;
 import com.moneymakingguide.service.DatasetService;
+import com.moneymakingguide.service.HiscoreService;
 import com.moneymakingguide.service.PlayerState;
 import com.moneymakingguide.service.PriceService;
 import com.moneymakingguide.service.ProfitCalculator;
@@ -73,6 +74,9 @@ public class MoneyMakingGuidePlugin extends Plugin
 	@Inject
 	private RequirementService requirementService;
 
+	@Inject
+	private HiscoreService hiscoreService;
+
 	private MoneyMakingGuidePanel panel;
 	private NavigationButton navButton;
 
@@ -86,7 +90,7 @@ public class MoneyMakingGuidePlugin extends Plugin
 
 	/** Snapshot of the account, rebuilt on the client thread and read by Swing. */
 	@Getter
-	private volatile PlayerState playerState = PlayerState.LOGGED_OUT;
+	private volatile PlayerState playerState = PlayerState.EMPTY;
 
 	/**
 	 * Quest states are comparatively expensive to enumerate, so they are cached and only
@@ -134,6 +138,7 @@ public class MoneyMakingGuidePlugin extends Plugin
 		}
 
 		priceService.refresh(false, () -> SwingUtilities.invokeLater(panel::rebuild));
+		lookupHiscores();
 
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
@@ -147,7 +152,7 @@ public class MoneyMakingGuidePlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		panel = null;
 		navButton = null;
-		playerState = PlayerState.LOGGED_OUT;
+		playerState = PlayerState.EMPTY;
 		questCache = new HashMap<>();
 	}
 
@@ -166,9 +171,8 @@ public class MoneyMakingGuidePlugin extends Plugin
 				break;
 			case LOGIN_SCREEN:
 			case HOPPING:
-				playerState = PlayerState.LOGGED_OUT;
 				questCache = new HashMap<>();
-				repaint();
+				applyHiscoreState();
 				break;
 			default:
 				break;
@@ -214,6 +218,13 @@ public class MoneyMakingGuidePlugin extends Plugin
 			return;
 		}
 
+		if ("hiscoreName".equals(event.getKey()) || "hiscoreAccountType".equals(event.getKey()))
+		{
+			hiscoreService.clear();
+			lookupHiscores();
+			return;
+		}
+
 		repaint();
 	}
 
@@ -224,12 +235,59 @@ public class MoneyMakingGuidePlugin extends Plugin
 		priceService.refresh(false, this::repaint);
 	}
 
-	/** Forces both feeds to update; wired to the panel's refresh button. */
+	/** Forces every feed to update; wired to the panel's refresh button. */
 	public void forceRefresh()
 	{
 		datasetService.refresh(config.datasetUrl(), this::repaint);
 		priceService.refresh(true, this::repaint);
-		clientThread.invokeLater(() -> rebuildPlayerState(true));
+		hiscoreService.clear();
+		lookupHiscores();
+		clientThread.invokeLater(() ->
+		{
+			rebuildPlayerState(true);
+			return true;
+		});
+	}
+
+	private void lookupHiscores()
+	{
+		hiscoreService.lookup(config.hiscoreName(), config.hiscoreAccountType().getEndpoint(), () ->
+		{
+			if (!playerState.isLoggedIn())
+			{
+				applyHiscoreState();
+			}
+			else
+			{
+				repaint();
+			}
+		});
+	}
+
+	/**
+	 * Falls back to hiscore levels while logged out. Live levels are always preferred,
+	 * so this only ever runs when there is no character to read.
+	 */
+	private void applyHiscoreState()
+	{
+		if (hiscoreService.hasLevels())
+		{
+			playerState = PlayerState.builder()
+				.loggedIn(false)
+				.levelSource(PlayerState.LevelSource.HISCORES)
+				.levels(hiscoreService.getLevels())
+				.combatLevel(hiscoreService.getCombatLevel())
+				.membersWorld(true)
+				.quests(java.util.Collections.emptyMap())
+				.playerName(hiscoreService.getLoadedName())
+				.build();
+		}
+		else
+		{
+			playerState = PlayerState.EMPTY;
+		}
+
+		repaint();
 	}
 
 	/**
@@ -286,8 +344,7 @@ public class MoneyMakingGuidePlugin extends Plugin
 	{
 		if (client.getGameState() != GameState.LOGGED_IN)
 		{
-			playerState = PlayerState.LOGGED_OUT;
-			repaint();
+			applyHiscoreState();
 			return;
 		}
 
@@ -338,12 +395,14 @@ public class MoneyMakingGuidePlugin extends Plugin
 
 		playerState = PlayerState.builder()
 			.loggedIn(true)
+			.levelSource(PlayerState.LevelSource.LIVE)
 			.levels(levels)
 			.combatLevel(local.getCombatLevel())
 			.membersWorld(client.getWorldType().contains(WorldType.MEMBERS))
 			.coins(coins)
 			.bankSeen(bank != null)
 			.quests(questCache)
+			.playerName(local.getName())
 			.build();
 
 		repaint();

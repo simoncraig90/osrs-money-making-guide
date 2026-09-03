@@ -43,6 +43,7 @@ public class RequirementServiceTest
 		levels.forEach((s, l) -> arr[s.ordinal()] = l);
 		return PlayerState.builder()
 			.loggedIn(true)
+			.levelSource(PlayerState.LevelSource.LIVE)
 			.levels(arr)
 			.combatLevel(100)
 			.membersWorld(true)
@@ -181,9 +182,44 @@ public class RequirementServiceTest
 	}
 
 	@Test
-	public void nothingIsFilteredOnSkillsWhileLoggedOut()
+	public void nothingIsFilteredOnSkillsWithNoLevelSource()
 	{
-		PlayerState p = PlayerState.LOGGED_OUT;
+		PlayerState p = PlayerState.EMPTY;
 		assertTrue(service.assess(method(req("Fishing", 99, true, null)), p, 0, -1, false, true).isEligible());
+	}
+
+	/** The point of the hiscores lookup: filtering has to work before you log in. */
+	@Test
+	public void hiscoreLevelsFilterEvenWhileLoggedOut()
+	{
+		int[] arr = new int[Skill.values().length];
+		arr[Skill.FISHING.ordinal()] = 62;
+		PlayerState p = PlayerState.builder()
+			.loggedIn(false)
+			.levelSource(PlayerState.LevelSource.HISCORES)
+			.levels(arr)
+			.quests(Collections.emptyMap())
+			.playerName("SativaPls")
+			.build();
+
+		assertFalse(service.assess(method(req("Fishing", 76, true, null)), p, 0, -1, false, true).isEligible());
+		assertTrue(service.assess(method(req("Fishing", 62, true, null)), p, 0, -1, false, true).isEligible());
+	}
+
+	/** Quests cannot be checked from the hiscores, so they must not block on that path. */
+	@Test
+	public void questsAreNotEnforcedFromHiscores()
+	{
+		MmgMethod m = method();
+		m.quests = Collections.singletonList("Enter the Abyss");
+
+		PlayerState p = PlayerState.builder()
+			.loggedIn(false)
+			.levelSource(PlayerState.LevelSource.HISCORES)
+			.levels(new int[Skill.values().length])
+			.quests(Collections.emptyMap())
+			.build();
+
+		assertTrue(service.assess(m, p, 0, -1, true, true).isEligible());
 	}
 }

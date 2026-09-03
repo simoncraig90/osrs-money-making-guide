@@ -55,6 +55,7 @@ public class PanelSmokeTest
 		Arrays.fill(levels, 60);
 		return PlayerState.builder()
 			.loggedIn(true)
+			.levelSource(PlayerState.LevelSource.LIVE)
 			.levels(levels)
 			.combatLevel(80)
 			.membersWorld(true)
@@ -94,7 +95,7 @@ public class PanelSmokeTest
 		// eligible, blocked and warning branches all get built at least once.
 		int rendered = 0;
 		int blocked = 0;
-		for (PlayerState player : Arrays.asList(PlayerState.LOGGED_OUT, midLevelAccount()))
+		for (PlayerState player : Arrays.asList(PlayerState.EMPTY, midLevelAccount()))
 		{
 			for (MmgMethod m : d.methods())
 			{

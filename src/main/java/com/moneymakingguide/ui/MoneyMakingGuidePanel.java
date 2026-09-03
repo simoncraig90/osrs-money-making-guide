@@ -281,7 +281,7 @@ public class MoneyMakingGuidePanel extends PluginPanel
 			case FREE:
 				return false;
 			default:
-				// On the login screen there is no world to match, so do not hide anything.
+				// Logged out there is no world to match, so do not hide anything.
 				return !player.isLoggedIn() || player.isMembersWorld();
 		}
 	}
@@ -308,11 +308,19 @@ public class MoneyMakingGuidePanel extends PluginPanel
 
 		sb.append("<br>Data: ").append(datasetService.getSource());
 
-		if (!player.isLoggedIn())
+		switch (player.getLevelSource())
 		{
-			sb.append("<br>Log in to filter by your levels");
+			case LIVE:
+				break;
+			case HISCORES:
+				sb.append("<br>Levels: hiscores for ").append(player.getPlayerName());
+				break;
+			default:
+				sb.append("<br>Log in, or set a hiscores name in config, to filter by level");
+				break;
 		}
-		else if (config.hideUnaffordable() && config.bankrollOverride() <= 0 && !player.isBankSeen())
+		if (player.isLoggedIn() && config.hideUnaffordable()
+			&& config.bankrollOverride() <= 0 && !player.isBankSeen())
 		{
 			sb.append("<br>Open your bank to count it as bankroll");
 		}

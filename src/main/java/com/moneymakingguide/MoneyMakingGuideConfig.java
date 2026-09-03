@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.hiscore.HiscoreEndpoint;
 
 @ConfigGroup(MoneyMakingGuideConfig.GROUP)
 public interface MoneyMakingGuideConfig extends Config
@@ -105,6 +106,30 @@ public interface MoneyMakingGuideConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "hiscoreName",
+		name = "Filter by hiscores",
+		description = "A username to pull levels from when you are not logged in, so you can plan before you play. Live levels always win while logged in.",
+		section = filtering,
+		position = 6
+	)
+	default String hiscoreName()
+	{
+		return "";
+	}
+
+	@ConfigItem(
+		keyName = "hiscoreAccountType",
+		name = "Hiscores account type",
+		description = "Which hiscore table to read the above name from.",
+		section = filtering,
+		position = 7
+	)
+	default AccountType hiscoreAccountType()
+	{
+		return AccountType.NORMAL;
+	}
+
+	@ConfigItem(
 		keyName = "priceMode",
 		name = "Price basis",
 		description = "Instant is pessimistic and realistic. Midpoint assumes your offers fill. Wiki matches the published table.",
@@ -137,7 +162,36 @@ public interface MoneyMakingGuideConfig extends Config
 	)
 	default String datasetUrl()
 	{
-		return "https://simon.github.io/osrs-money-making-guide/mmg-data.json";
+		return "https://simoncraig90.github.io/osrs-money-making-guide/mmg-data.json";
+	}
+
+	/** The hiscore tables worth offering; HiscoreEndpoint has several more. */
+	enum AccountType
+	{
+		NORMAL("Normal", HiscoreEndpoint.NORMAL),
+		IRONMAN("Ironman", HiscoreEndpoint.IRONMAN),
+		HARDCORE_IRONMAN("Hardcore ironman", HiscoreEndpoint.HARDCORE_IRONMAN),
+		ULTIMATE_IRONMAN("Ultimate ironman", HiscoreEndpoint.ULTIMATE_IRONMAN);
+
+		private final String label;
+		private final HiscoreEndpoint endpoint;
+
+		AccountType(String label, HiscoreEndpoint endpoint)
+		{
+			this.label = label;
+			this.endpoint = endpoint;
+		}
+
+		public HiscoreEndpoint getEndpoint()
+		{
+			return endpoint;
+		}
+
+		@Override
+		public String toString()
+		{
+			return label;
+		}
 	}
 
 	enum MembersFilter

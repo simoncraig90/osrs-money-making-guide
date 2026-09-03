@@ -86,6 +86,12 @@ two are shown on the card but never enforced.
 defeated Dad" — and `QuestState` cannot express that. Turn on *Treat quests as hard
 requirements* if you would rather over-filter than under-filter.
 
+**Levels without logging in.** Set a username under *Filter by hiscores* and the panel
+pulls levels from the OSRS hiscores, so the filter works before you are in game — which
+is exactly when you are deciding what to go and do. Live client levels always take
+precedence while logged in. Quests are never enforced on this path, since the hiscores do
+not report them.
+
 **Bankroll** counts coins in your inventory plus your bank, but the client can only read
 the bank after you have opened it once in a session; until then the panel says so. Set a
 *Bankroll override* to skip the whole business.
@@ -161,6 +167,7 @@ src/main/java/com/moneymakingguide/
   service/PriceService.java             real-time GE prices
   service/ProfitCalculator.java         GE tax, per-kill scaling
   service/RequirementService.java       the eligibility filter
+  service/HiscoreService.java           levels for when you are not logged in
   ui/                                   the side panel
 ```
 
@@ -177,7 +184,8 @@ dirty flag drained once per tick, so a burst of `StatChanged` events costs one r
   values, spell costs) are baked in by the wiki at page-render time rather than priced
   live. They are used as-is.
 - **Ironman mode** is not modelled — the panel will happily suggest methods that require
-  buying inputs.
+  buying inputs. (The hiscores lookup does support ironman tables; the *filtering* does
+  not know what an ironman cannot buy.)
 - **Recurring methods** (farm runs, birdhouses) are off by default. Their profit is per
   run, not per hour, so they sort misleadingly against hourly methods.
 

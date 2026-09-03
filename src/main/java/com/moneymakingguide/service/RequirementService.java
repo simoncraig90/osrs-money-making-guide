@@ -37,9 +37,15 @@ public class RequirementService
 			blockers.add("Members only");
 		}
 
-		if (player.isLoggedIn())
+		// Levels may come from the client or the hiscores; quests only exist while
+		// logged in, since the hiscores do not report them.
+		if (player.hasLevels())
 		{
 			assessSkills(method, player, blockers, warnings);
+		}
+
+		if (player.isLoggedIn())
+		{
 			assessQuests(method, player, blockers, warnings, hardFilterQuests);
 		}
 

@@ -35,7 +35,7 @@ import okhttp3.Response;
 public class DatasetService
 {
 	public static final String USER_AGENT =
-		"runelite-money-making-guide/1.0 (github.com/simon/osrs-money-making-guide)";
+		"runelite-money-making-guide/1.0 (github.com/simoncraig90/osrs-money-making-guide)";
 
 	private static final String BUNDLED = "/com/moneymakingguide/mmg-data.json";
 	private static final Duration CACHE_TTL = Duration.ofHours(12);

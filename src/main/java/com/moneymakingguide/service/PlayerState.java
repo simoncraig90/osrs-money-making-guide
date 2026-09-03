@@ -17,13 +17,27 @@ import net.runelite.api.Skill;
 @Builder
 public class PlayerState
 {
-	public static final PlayerState LOGGED_OUT = PlayerState.builder()
+	/** Where {@link #levels} came from, if anywhere. */
+	public enum LevelSource
+	{
+		/** Nothing to filter on -- show every method. */
+		NONE,
+		/** Read from the logged-in character. Authoritative. */
+		LIVE,
+		/** Fetched from the hiscores. As current as the player's last hiscore update. */
+		HISCORES
+	}
+
+	public static final PlayerState EMPTY = PlayerState.builder()
 		.loggedIn(false)
+		.levelSource(LevelSource.NONE)
 		.levels(new int[Skill.values().length])
 		.quests(Collections.emptyMap())
 		.build();
 
 	boolean loggedIn;
+
+	LevelSource levelSource;
 
 	/** Real (unboosted) levels, indexed by {@link Skill#ordinal()}. */
 	int[] levels;
@@ -37,8 +51,16 @@ public class PlayerState
 	/** False until the bank has been opened once, at which point {@link #coins} includes it. */
 	boolean bankSeen;
 
-	/** Quest state by normalised quest name. */
+	/** Quest state by normalised quest name. Only ever populated while logged in. */
 	Map<String, QuestState> quests;
+
+	/** Whose levels these are, for the panel to display. */
+	String playerName;
+
+	public boolean hasLevels()
+	{
+		return levelSource != LevelSource.NONE;
+	}
 
 	public int level(Skill skill)
 	{

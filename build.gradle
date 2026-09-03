@@ -13,14 +13,14 @@ def runeLiteVersion = 'latest.release'
 dependencies {
     compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
 
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
     testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
-    testCompileOnly 'org.projectlombok:lombok:1.18.34'
-    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    testCompileOnly 'org.projectlombok:lombok:1.18.30'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
 group = 'com.moneymakingguide'
@@ -59,8 +59,8 @@ sourceSets {
 
 dependencies {
     devCompileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
-    devCompileOnly 'org.projectlombok:lombok:1.18.34'
-    devAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+    devCompileOnly 'org.projectlombok:lombok:1.18.30'
+    devAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 }
 
 tasks.register('relocateDevJava', Sync) {

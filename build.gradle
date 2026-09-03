@@ -1,0 +1,97 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenLocal()
+    maven { url = 'https://repo.runelite.net' }
+    mavenCentral()
+}
+
+def runeLiteVersion = 'latest.release'
+
+dependencies {
+    compileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+
+    compileOnly 'org.projectlombok:lombok:1.18.34'
+    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
+    testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+    testCompileOnly 'org.projectlombok:lombok:1.18.34'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+group = 'com.moneymakingguide'
+version = '1.0.0'
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+tasks.named('test') {
+    useJUnit()
+}
+
+// --- Local development build -------------------------------------------------------
+//
+// The shipped RuneLite client side-loads plugins through a PluginClassLoader that does
+// not implement ReflectUtil.PrivateLookupableClassLoader. Every @Subscribe registration
+// then dies with "LambdaConversionException: Invalid caller", because the lookup has to
+// teleport into the plugin loader's own unnamed module and loses MODULE access on the
+// way. Only the Plugin Hub's loader implements that interface.
+//
+// Putting the classes on the client's own classpath sidesteps it -- but core plugins are
+// discovered by scanning net.runelite.client.plugins, so the package has to move. This
+// produces that relocated jar. The Plugin Hub artifact built by `jar` is unaffected.
+def devPackage = 'net.runelite.client.plugins.moneymakingguide'
+def devPath = devPackage.replace('.', '/')
+
+sourceSets {
+    dev
+}
+
+dependencies {
+    devCompileOnly group: 'net.runelite', name: 'client', version: runeLiteVersion
+    devCompileOnly 'org.projectlombok:lombok:1.18.34'
+    devAnnotationProcessor 'org.projectlombok:lombok:1.18.34'
+}
+
+tasks.register('relocateDevJava', Sync) {
+    from 'src/main/java'
+    into layout.buildDirectory.dir('dev-src/java')
+    // Rewrites package/import statements and the bundled-resource path constant alike.
+    filter { String line ->
+        line.replace('/com/moneymakingguide/', "/$devPath/")
+            .replace('com.moneymakingguide', devPackage)
+    }
+    eachFile { it.path = it.path.replace('com/moneymakingguide', devPath) }
+    includeEmptyDirs = false
+}
+
+tasks.register('relocateDevResources', Sync) {
+    from 'src/main/resources'
+    into layout.buildDirectory.dir('dev-src/resources')
+    // Contents are left alone here: one of these is a PNG.
+    eachFile { it.path = it.path.replace('com/moneymakingguide', devPath) }
+    includeEmptyDirs = false
+}
+
+sourceSets.dev.java.srcDirs = [layout.buildDirectory.dir('dev-src/java')]
+sourceSets.dev.resources.srcDirs = [layout.buildDirectory.dir('dev-src/resources')]
+
+tasks.named('compileDevJava') { dependsOn 'relocateDevJava' }
+tasks.named('processDevResources') { dependsOn 'relocateDevResources' }
+
+tasks.register('devJar', Jar) {
+    description = 'Builds a classpath-loadable jar for running against the shipped client'
+    group = 'build'
+    archiveClassifier = 'dev'
+    from sourceSets.dev.output
+}

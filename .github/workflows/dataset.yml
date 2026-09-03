@@ -1,0 +1,70 @@
+name: refresh-dataset
+
+# The wiki's guides change constantly and Plugin Hub releases are slow, so the dataset
+# is regenerated on a schedule and published to Pages for the plugin to fetch at runtime.
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Rebuild dataset from the wiki
+        run: python3 tools/build_dataset.py mmg-data.json
+
+      - name: Sanity check
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('mmg-data.json'))
+          methods = d['methods']
+          # A parser regression or a wiki outage shows up as a collapsed dataset. Fail
+          # loudly rather than publishing an empty panel to every user.
+          assert len(methods) > 400, f'only {len(methods)} methods'
+          assert len(d['taxExempt']) > 10, 'tax exemption list looks empty'
+          gated = sum(1 for m in methods if any(s['required'] for s in m['skills']))
+          assert gated > 200, f'only {gated} methods have requirements; parser may be broken'
+          unpriced = [i['name'] for m in methods for k in ('inputs', 'outputs')
+                      for i in m[k] if 'id' not in i and 'flat' not in i]
+          assert not unpriced, f'unpriced items: {unpriced[:5]}'
+          print(f'{len(methods)} methods, {gated} skill-gated: OK')
+          PY
+
+      - name: Commit if changed
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          cp mmg-data.json src/main/resources/com/moneymakingguide/mmg-data.json
+          if git diff --quiet -- mmg-data.json; then
+            echo 'dataset unchanged'
+            exit 0
+          fi
+          git add mmg-data.json src/main/resources/com/moneymakingguide/mmg-data.json
+          git commit -m 'chore: refresh money making guide dataset'
+          git push
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: refresh
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
